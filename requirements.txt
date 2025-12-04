@@ -1,0 +1,6 @@
+streamlit
+pandas
+sentence-transformers
+openpyxl
+reportlab
+nltk
