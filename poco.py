@@ -136,21 +136,21 @@ def justification_for_pair(clo_text, po_text, sim_score, weight, clo_verbs, po_v
     label = {3:"Strong (3)", 2:"Moderate (2)", 1:"Weak (1)", 0:"No mapping (0)"}[weight]
     return f"{label} — {' '.join(reasons)}"
 
-def df_to_excel_bytes(df_matrix, clo_list, po_list, justification_df=None):
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # Write mapping matrix
-        df_matrix.to_excel(writer, sheet_name='CO-PO Matrix', index=True)
-        # Write CLOs separately for reference
-        pd.DataFrame({'CLO': clo_list}).to_excel(writer, sheet_name='CLOs', index=False)
-        # Write POs
-        pd.DataFrame({'PO': po_list}).to_excel(writer, sheet_name='POs', index=False)
-        # Justifications
-        if justification_df is not None:
-            justification_df.to_excel(writer, sheet_name='Justifications', index=False)
-        writer.save()
+def df_to_excel_bytes(matrix_df, clo_list, AICTE_POS, justification_df):
+    import pandas as pd
+    import io
+
+    output = io.BytesIO()
+
+    # Use context manager (correct in pandas 2.x)
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        matrix_df.to_excel(writer, index=False, sheet_name="CO-PO Matrix")
+        pd.DataFrame({"CLOs": clo_list}).to_excel(writer, index=False, sheet_name="CLO List")
+        pd.DataFrame({"POs": AICTE_POS}).to_excel(writer, index=False, sheet_name="PO List")
+        justification_df.to_excel(writer, index=False, sheet_name="Justification")
+
     output.seek(0)
-    return output.getvalue()
+    return output.read()
 
 def df_to_pdf_bytes(matrix_df, clo_list, po_list, justification_df=None, title="CO-PO Mapping Report"):
     buf = BytesIO()
@@ -419,4 +419,5 @@ with col2:
 st.markdown("---")
 st.caption("This tool is provided as an academic prototype. For production deployment, consider "
            "model fine-tuning on domain mappings, secure hosting of the model, and additional QA steps.")
+
 
