@@ -182,16 +182,22 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="COâ
     story.append(Spacer(1, 16))
 
     # ---------- CLEAN COLUMN NAMES ----------
-    justification_df = justification_df.rename(columns={
+ justification_df = justification_df.rename(columns={
         "Level": "Level",
         "Mapping": "Level",
         "Map Level": "Level",
         "CO-PO Level": "Level",
         "Similarity": "Similarity",
-        "Common Keywords": "Keywords"
+        "Common Keywords": "Keywords",
+        "Keyword": "Keywords",
+        "keyword": "Keywords",
     })
 
-    # Keyword formatting
+    # Ensure Keywords column exists
+    if "Keywords" not in justification_df.columns:
+        justification_df["Keywords"] = ""
+
+    # Normalize Keywords
     def fmt_kw(x):
         if isinstance(x, float):
             return ""
@@ -201,7 +207,8 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="COâ
             return x
         return ""
 
-    justification_df["Keywords"] = justification_df["Keywords"].apply(fmt_kw)
+    justification_df["Keywords"] = justification_df["Keywords"].apply(fmt_kw)    
+ 
 
     # BUILD PIVOTED STRUCTURE
     pivot_data = {}
@@ -480,6 +487,7 @@ with col2:
 st.markdown("---")
 st.caption("This tool is provided as an academic prototype. For production deployment, consider "
            "model fine-tuning on domain mappings, secure hosting of the model, and additional QA steps.")
+
 
 
 
