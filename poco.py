@@ -152,7 +152,7 @@ def df_to_excel_bytes(matrix_df, clo_list, AICTE_POS, justification_df):
     output.seek(0)
     return output.read()
 
-def generate_pdf_bytes(clo_list, AICTE_POS, matrix_df, justification_df):
+def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df):
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib.pagesizes import A4
@@ -445,6 +445,7 @@ with col2:
 st.markdown("---")
 st.caption("This tool is provided as an academic prototype. For production deployment, consider "
            "model fine-tuning on domain mappings, secure hosting of the model, and additional QA steps.")
+
 
 
 
