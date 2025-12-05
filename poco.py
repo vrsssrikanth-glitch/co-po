@@ -216,19 +216,21 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="CO�
     story.append(Spacer(1, 6))
 
     for _, row in justification_df.iterrows():
-        clo = row["CLO"]
-        po = row["PO"]
-        level = row["Level"]
-        sim = row["Similarity"]
-        keywords = row["Common Keywords"]
+    clo = row.get("CLO")
+    po = row.get("PO")
 
-        text = (
-            f"<b>{clo} → {po}</b>: {level} — "
-            f"Similarity = {sim:.2f}. "
-            f"Common keywords: {', '.join(keywords)}"
-        )
-        story.append(Paragraph(text, body))
-        story.append(Spacer(1, 6))
+    level = row.get("Level") or row.get("Mapping") or row.get("Map Level") or row.get("CO-PO Level")
+    sim = row.get("Similarity") or row.get("Sim") or 0
+    keywords = row.get("Common Keywords") or row.get("Keywords") or []
+
+    text = (
+        f"<b>{clo} → {po}</b>: {level} — "
+        f"Similarity = {sim:.2f}. "
+        f"Common keywords: {', '.join(keywords)}"
+    )
+
+    story.append(Paragraph(text, body))
+    story.append(Spacer(1, 6))
 
     doc.build(story)
 
@@ -443,6 +445,7 @@ with col2:
 st.markdown("---")
 st.caption("This tool is provided as an academic prototype. For production deployment, consider "
            "model fine-tuning on domain mappings, secure hosting of the model, and additional QA steps.")
+
 
 
 
