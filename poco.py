@@ -212,25 +212,36 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="CO�
     story.append(Spacer(1, 18))
 
     # ---------- JUSTIFICATIONS ----------
-    story.append(Paragraph("<b>Mapping Justifications</b>", h2))
+      story.append(Paragraph("<b>Mapping Justifications</b>", h2))
     story.append(Spacer(1, 6))
 
     for _, row in justification_df.iterrows():
-    clo = row.get("CLO")
-    po = row.get("PO")
+        clo = row.get("CLO")
+        po = row.get("PO")
 
-    level = row.get("Level") or row.get("Mapping") or row.get("Map Level") or row.get("CO-PO Level")
-    sim = row.get("Similarity") or row.get("Sim") or 0
-    keywords = row.get("Common Keywords") or row.get("Keywords") or []
+        level = (
+            row.get("Level")
+            or row.get("Mapping")
+            or row.get("Map Level")
+            or row.get("CO-PO Level")
+        )
 
-    text = (
-        f"<b>{clo} → {po}</b>: {level} — "
-        f"Similarity = {sim:.2f}. "
-        f"Common keywords: {', '.join(keywords)}"
-    )
+        sim = row.get("Similarity") or row.get("Sim") or 0
 
-    story.append(Paragraph(text, body))
-    story.append(Spacer(1, 6))
+        keywords = row.get("Common Keywords") or row.get("Keywords") or []
+        if isinstance(keywords, float):  # Handle NaN
+            keywords = []
+        if isinstance(keywords, str):  # If comma-separated text
+            keywords = [k.strip() for k in keywords.split(",")]
+
+        text = (
+            f"<b>{clo} → {po}</b>: {level} — "
+            f"Similarity = {sim:.2f}. "
+            f"Common keywords: {', '.join(keywords)}"
+        )
+
+        story.append(Paragraph(text, body))
+        story.append(Spacer(1, 6))
 
     doc.build(story)
 
@@ -445,6 +456,7 @@ with col2:
 st.markdown("---")
 st.caption("This tool is provided as an academic prototype. For production deployment, consider "
            "model fine-tuning on domain mappings, secure hosting of the model, and additional QA steps.")
+
 
 
 
