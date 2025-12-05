@@ -151,7 +151,6 @@ def df_to_excel_bytes(matrix_df, clo_list, AICTE_POS, justification_df):
 
     output.seek(0)
     return output.read()
-
 def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="COâ€“PO Mapping Report"):
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
     from reportlab.lib.styles import getSampleStyleSheet
@@ -169,13 +168,18 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="COâ
     h2 = styles["Heading2"]
     body = styles["BodyText"]
 
-    doc = SimpleDocTemplate(buffer, pagesize=A4,
-                            rightMargin=40, leftMargin=40,
-                            topMargin=40, bottomMargin=30)
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=40,
+        leftMargin=40,
+        topMargin=40,
+        bottomMargin=30
+    )
 
     story = []
 
-    # ---------- Title ----------
+    # ---------- TITLE ----------
     story.append(Paragraph(title, title_style))
     story.append(Spacer(1, 12))
 
@@ -193,8 +197,7 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="COâ
     table_data = [["CLO"] + [f"PO{i+1}" for i in range(len(AICTE_POS))]]
 
     for idx, clo in enumerate(clo_list):
-        row = [f"CLO{idx+1}"]
-        row += list(matrix_df.iloc[idx])
+        row = [f"CLO{idx+1}"] + list(matrix_df.iloc[idx])
         table_data.append(row)
 
     table = Table(table_data, repeatRows=1)
@@ -212,26 +215,31 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="COâ
     story.append(Spacer(1, 18))
 
     # ---------- JUSTIFICATIONS ----------
-      story.append(Paragraph("<b>Mapping Justifications</b>", h2))
+    story.append(Paragraph("<b>Mapping Justifications</b>", h2))
     story.append(Spacer(1, 6))
 
     for _, row in justification_df.iterrows():
-        clo = row.get("CLO")
-        po = row.get("PO")
+        clo = row.get("CLO") or ""
+        po = row.get("PO") or ""
 
+        # Safe level field (handles missing column names)
         level = (
             row.get("Level")
             or row.get("Mapping")
             or row.get("Map Level")
             or row.get("CO-PO Level")
+            or row.get("LO-PO Level")
+            or "N/A"
         )
 
+        # Safe similarity
         sim = row.get("Similarity") or row.get("Sim") or 0
 
+        # Safe keywords
         keywords = row.get("Common Keywords") or row.get("Keywords") or []
-        if isinstance(keywords, float):  # Handle NaN
+        if isinstance(keywords, float):  # NaN
             keywords = []
-        if isinstance(keywords, str):  # If comma-separated text
+        if isinstance(keywords, str):  # comma text
             keywords = [k.strip() for k in keywords.split(",")]
 
         text = (
@@ -456,6 +464,7 @@ with col2:
 st.markdown("---")
 st.caption("This tool is provided as an academic prototype. For production deployment, consider "
            "model fine-tuning on domain mappings, secure hosting of the model, and additional QA steps.")
+
 
 
 
