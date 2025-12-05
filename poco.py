@@ -152,64 +152,90 @@ def df_to_excel_bytes(matrix_df, clo_list, AICTE_POS, justification_df):
     output.seek(0)
     return output.read()
 
-def df_to_pdf_bytes(matrix_df, clo_list, po_list, justification_df=None, title="CO-PO Mapping Report"):
-    buf = BytesIO()
-    c = canvas.Canvas(buf, pagesize=A4)
-    width, height = A4
-    margin = 40
-    y = height - margin
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(margin, y, title)
-    y -= 30
-    c.setFont("Helvetica", 10)
-    # POs line
-    c.drawString(margin, y, "P O list:")
-    y -= 14
-    for j, po in enumerate(po_list, start=1):
-        # keep it short
-        txt = f"PO{j}: " + (po[:120] + "..." if len(po)>120 else po)
-        c.drawString(margin, y, txt)
-        y -= 12
-        if y < margin + 60:
-            c.showPage()
-            y = height - margin
-    y -= 8
-    # Print matrix (may be wide — we print per CLO rows)
-    c.setFont("Helvetica-Bold", 11)
-    c.drawString(margin, y, "CO-PO Matrix (rows: CLOs; cols: PO1..PO12)")
-    y -= 16
-    c.setFont("Helvetica", 10)
-    for i, clo in enumerate(clo_list):
-        rowvals = matrix_df.iloc[i].tolist()
-        rowstr = f"CLO{i+1}: " + (clo[:140] + "..." if len(clo)>140 else clo)
-        c.drawString(margin, y, rowstr)
-        y -= 12
-        valsline = "      " + "  ".join([str(x) for x in rowvals])
-        c.drawString(margin, y, valsline)
-        y -= 18
-        if y < margin + 60:
-            c.showPage()
-            y = height - margin
-    # Append justifications (first 50 to be safe)
-    if justification_df is not None:
-        c.showPage()
-        y = height - margin
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(margin, y, "Sample Justifications")
-        y -= 18
-        c.setFont("Helvetica", 10)
-        for idx, row in justification_df.head(200).iterrows():
-            txt = f"CLO{row['CLO_index']+1} -> PO{row['PO_index']+1}: {row['Justification']}"
-            # wrap text
-            for line in split_text_to_lines(txt, max_chars=110):
-                c.drawString(margin, y, line)
-                y -= 12
-                if y < margin + 60:
-                    c.showPage()
-                    y = height - margin
-    c.save()
-    buf.seek(0)
-    return buf.getvalue()
+def generate_pdf_bytes(clo_list, AICTE_POS, matrix_df, justification_df):
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER
+    import io
+
+    buffer = io.BytesIO()
+
+    styles = getSampleStyleSheet()
+    title_style = styles["Heading1"]
+    title_style.alignment = TA_CENTER
+
+    h2 = styles["Heading2"]
+    body = styles["BodyText"]
+
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+                            rightMargin=40, leftMargin=40,
+                            topMargin=40, bottomMargin=30)
+
+    story = []
+
+    # ---------- Title ----------
+    story.append(Paragraph("CO–PO Mapping Report", title_style))
+    story.append(Spacer(1, 12))
+
+    # ---------- PO LIST ----------
+    story.append(Paragraph("<b>Program Outcomes (POs)</b>", h2))
+    for po in AICTE_POS:
+        story.append(Paragraph(po, body))
+        story.append(Spacer(1, 4))
+
+    story.append(Spacer(1, 12))
+
+    # ---------- CO–PO MATRIX ----------
+    story.append(Paragraph("<b>CO–PO Matrix</b>", h2))
+
+    # Prepare matrix table
+    table_data = [ ["CLO"] + [f"PO{i+1}" for i in range(len(AICTE_POS))] ]
+
+    for idx, clo in enumerate(clo_list):
+        row = [f"CLO{idx+1}"]
+        row += list(matrix_df.iloc[idx])
+        table_data.append(row)
+
+    table = Table(table_data, repeatRows=1)
+
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ("TEXTCOLOR", (0,0), (-1,0), colors.black),
+        ("ALIGN", (0,0), (-1,-1), "CENTER"),
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("GRID", (0,0), (-1,-1), 0.4, colors.black),
+        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+    ]))
+
+    story.append(table)
+    story.append(Spacer(1, 18))
+
+    # ---------- JUSTIFICATIONS ----------
+    story.append(Paragraph("<b>Mapping Justifications</b>", h2))
+    story.append(Spacer(1, 6))
+
+    for _, row in justification_df.iterrows():
+        clo = row["CLO"]
+        po = row["PO"]
+        level = row["Level"]
+        sim = row["Similarity"]
+        keywords = row["Common Keywords"]
+
+        text = (
+            f"<b>{clo} → {po}</b>: "
+            f"{level} — Similarity = {sim:.2f}. "
+            f"Common keywords: {', '.join(keywords)}"
+        )
+        story.append(Paragraph(text, body))
+        story.append(Spacer(1, 6))
+
+    doc.build(story)
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    return pdf_bytes
+
 
 def split_text_to_lines(text, max_chars=100):
     words = text.split()
@@ -419,5 +445,6 @@ with col2:
 st.markdown("---")
 st.caption("This tool is provided as an academic prototype. For production deployment, consider "
            "model fine-tuning on domain mappings, secure hosting of the model, and additional QA steps.")
+
 
 
