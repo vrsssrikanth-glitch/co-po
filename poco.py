@@ -152,7 +152,7 @@ def df_to_excel_bytes(matrix_df, clo_list, AICTE_POS, justification_df):
     output.seek(0)
     return output.read()
 
-def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df):
+def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="CO–PO Mapping Report"):
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib.pagesizes import A4
@@ -176,7 +176,7 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df):
     story = []
 
     # ---------- Title ----------
-    story.append(Paragraph("CO–PO Mapping Report", title_style))
+    story.append(Paragraph(title, title_style))
     story.append(Spacer(1, 12))
 
     # ---------- PO LIST ----------
@@ -190,8 +190,7 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df):
     # ---------- CO–PO MATRIX ----------
     story.append(Paragraph("<b>CO–PO Matrix</b>", h2))
 
-    # Prepare matrix table
-    table_data = [ ["CLO"] + [f"PO{i+1}" for i in range(len(AICTE_POS))] ]
+    table_data = [["CLO"] + [f"PO{i+1}" for i in range(len(AICTE_POS))]]
 
     for idx, clo in enumerate(clo_list):
         row = [f"CLO{idx+1}"]
@@ -224,19 +223,18 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df):
         keywords = row["Common Keywords"]
 
         text = (
-            f"<b>{clo} → {po}</b>: "
-            f"{level} — Similarity = {sim:.2f}. "
+            f"<b>{clo} → {po}</b>: {level} — "
+            f"Similarity = {sim:.2f}. "
             f"Common keywords: {', '.join(keywords)}"
         )
         story.append(Paragraph(text, body))
         story.append(Spacer(1, 6))
 
     doc.build(story)
+
     pdf_bytes = buffer.getvalue()
     buffer.close()
     return pdf_bytes
-
-
 def split_text_to_lines(text, max_chars=100):
     words = text.split()
     lines = []
@@ -445,6 +443,7 @@ with col2:
 st.markdown("---")
 st.caption("This tool is provided as an academic prototype. For production deployment, consider "
            "model fine-tuning on domain mappings, secure hosting of the model, and additional QA steps.")
+
 
 
 
