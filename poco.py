@@ -159,6 +159,24 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="COâ
     from reportlab.lib.enums import TA_CENTER
     from reportlab.lib import colors
     import io
+    import re
+
+    # -----------------------------
+    # STOPWORD LIST FOR CLEAN KEYWORDS
+    # -----------------------------
+    stopwords = {
+        "the","and","for","to","of","in","on","with","is","are","as","by",
+        "that","this","a","an","be","from","at","it","its","their","using",
+        "use","used"
+    }
+
+    def clean_keywords(text):
+        words = re.findall(r"[A-Za-z]+", text.lower())
+        filtered = [w for w in words if w not in stopwords]
+        return ", ".join(sorted(set(filtered)))[:120]
+
+    # Clean justification text
+    justification_df["Justification"] = justification_df["Justification"].apply(clean_keywords)
 
     buffer = io.BytesIO()
 
@@ -168,7 +186,7 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="COâ
 
     wrap = ParagraphStyle(name="wrap", fontSize=6, leading=7, alignment=TA_CENTER)
 
-    # Landscape PDF
+    # Setup landscape PDF
     doc = SimpleDocTemplate(
         buffer,
         pagesize=landscape(A4),
@@ -181,33 +199,28 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="COâ
     story.append(Spacer(1, 10))
 
     # ------------------------------------------------------
-    # Build pivot table using CLO_index / PO_index
+    # Pivot with CLO_index / PO_index
     # ------------------------------------------------------
     n_clo = len(clo_list)
     n_po = len(AICTE_POS)
 
-    pivot = {}
-
-    # Prepare empty output structure
-    for c in range(n_clo):
-        pivot[c] = {"Level": [], "Sim": [], "KW": []}
+    pivot = {c: {"Level": [], "Sim": [], "KW": []} for c in range(n_clo)}
 
     for po_i in range(n_po):
         for clo_i in range(n_clo):
+
             row = justification_df[
                 (justification_df["CLO_index"] == clo_i) &
                 (justification_df["PO_index"] == po_i)
             ]
 
             if row.empty:
-                level = ""
-                sim = ""
-                kw = ""
+                level, sim, kw = "", "", ""
             else:
                 row = row.iloc[0]
                 level = Paragraph(str(row["Weight"]), wrap)
                 sim = Paragraph(f"{row['Similarity']:.2f}", wrap)
-                kw = Paragraph(str(row["Justification"]), wrap)
+                kw = Paragraph(row["Justification"], wrap)
 
             pivot[clo_i]["Level"].append(level)
             pivot[clo_i]["Sim"].append(sim)
@@ -217,11 +230,12 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="COâ
     # Build header
     # ------------------------------------------------------
     header = ["PO"]
+
     for i in range(n_clo):
         header += [
             Paragraph(f"CLO{i+1}<br/>Level", wrap),
             Paragraph(f"CLO{i+1}<br/>Sim", wrap),
-            Paragraph(f"CLO{i+1}<br/>Justification", wrap),
+            Paragraph(f"CLO{i+1}<br/>Keywords", wrap)
         ]
 
     table_data = [header]
@@ -238,14 +252,14 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="COâ
         table_data.append(row)
 
     # ------------------------------------------------------
-    # Fit-to-page widths
+    # Adjust Column Widths for Fitting
     # ------------------------------------------------------
-    col_widths = [25] + [35, 35, 120] * n_clo
+    col_widths = [40] + [28, 28, 110] * n_clo
 
     table = Table(table_data, colWidths=col_widths, repeatRows=1)
     table.setStyle(TableStyle([
         ("BACKGROUND", (0,0), (-1,0), colors.lightblue),
-        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTNAME", (0,0), (-1,-1), "Helvetica"),
         ("FONTSIZE", (0,0), (-1,-1), 6),
         ("ALIGN", (0,0), (-1,-1), "CENTER"),
         ("VALIGN", (0,0), (-1,-1), "TOP"),
@@ -261,7 +275,6 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="COâ
     buffer.close()
 
     return pdf_bytes
-
 
 def split_text_to_lines(text, max_chars=100):
     words = text.split()
@@ -471,6 +484,7 @@ with col2:
 st.markdown("---")
 st.caption("This tool is provided as an academic prototype. For production deployment, consider "
            "model fine-tuning on domain mappings, secure hosting of the model, and additional QA steps.")
+
 
 
 
