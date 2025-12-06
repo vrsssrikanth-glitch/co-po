@@ -482,7 +482,7 @@ with col2:
                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 st.markdown("""st.markdown(
-    """
+    ""
      <div style='font-size:13px; margin-top:-10px; color:#444;'>
     <b>Why add PO verbs manually?</b><br>
     Manual verbs allow you to <b>autotune</b> the CO-PO mapping.<br>
@@ -495,11 +495,12 @@ st.markdown("""st.markdown(
     </ul>
     If left empty, the system will use auto-extracted verbs.
     </div>
-    """,
+    "",
     unsafe_allow_html=True,
 )
 st.caption("This tool is provided as an academic prototype. For production deployment, consider "
            "model fine-tuning on domain mappings, secure hosting of the model, and additional QA steps.")
+
 
 
 
