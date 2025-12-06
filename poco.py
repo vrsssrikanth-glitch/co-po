@@ -481,7 +481,7 @@ with col2:
             st.download_button("Click to download", data=data, file_name="co_po_matrix_last.xlsx",
                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-st.markdown("""st.markdown(
+st.markdown(
     ""
      <div style='font-size:13px; margin-top:-10px; color:#444;'>
     <b>Why add PO verbs manually?</b><br>
@@ -500,6 +500,7 @@ st.markdown("""st.markdown(
 )
 st.caption("This tool is provided as an academic prototype. For production deployment, consider "
            "model fine-tuning on domain mappings, secure hosting of the model, and additional QA steps.")
+
 
 
 
