@@ -483,13 +483,13 @@ with col2:
 
 st.markdown("""st.markdown(
     """
-    <div style='font-size:13px; margin-top:-10px; color:#444;'>
+     <div style='font-size:13px; margin-top:-10px; color:#444;'>
     <b>Why add PO verbs manually?</b><br>
     Manual verbs allow you to <b>autotune</b> the CO-PO mapping.<br>
     They help:
     <ul style='margin-top:2px;'>
         <li>Improve accuracy when automatic verb extraction is not perfect</li>
-        <li>Align PO verbs with Bloom's taxonomy for NBA</li>
+        <li>Align PO verbs with Blooms taxonomy for NBA</li>
         <li>Strengthen or adjust CLO-PO mapping weights</li>
         <li>Override system-generated verbs for finer control</li>
     </ul>
@@ -500,6 +500,7 @@ st.markdown("""st.markdown(
 )
 st.caption("This tool is provided as an academic prototype. For production deployment, consider "
            "model fine-tuning on domain mappings, secure hosting of the model, and additional QA steps.")
+
 
 
 
