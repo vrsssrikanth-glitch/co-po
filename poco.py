@@ -151,16 +151,6 @@ def df_to_excel_bytes(matrix_df, clo_list, AICTE_POS, justification_df):
 
     output.seek(0)
     return output.read()
-# -----------------------------------------
-# DEBUG: Check CLO / PO spelling and format
-# -----------------------------------------
-
-print("CLO values:", justification_df["CLO"].unique())
-print("PO values:", justification_df["PO"].unique())
-print("JUSTIFICATION SAMPLE:\n", justification_df.head(10))
-
-print("COLUMNS:", justification_df.columns.tolist())
-print(justification_df.head(10))
 
 def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="COâ€“PO Mapping Report"):
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
@@ -169,7 +159,6 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="COâ
     from reportlab.lib.enums import TA_CENTER
     from reportlab.lib import colors
     import io
-    import re
 
     buffer = io.BytesIO()
 
@@ -177,13 +166,9 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="COâ
     title_style = styles["Heading1"]
     title_style.alignment = TA_CENTER
 
-    wrap_style = ParagraphStyle(
-        name="wrap",
-        fontSize=6,
-        leading=7,
-        alignment=TA_CENTER
-    )
+    wrap = ParagraphStyle(name="wrap", fontSize=6, leading=7, alignment=TA_CENTER)
 
+    # Landscape PDF
     doc = SimpleDocTemplate(
         buffer,
         pagesize=landscape(A4),
@@ -196,56 +181,22 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="COâ
     story.append(Spacer(1, 10))
 
     # ------------------------------------------------------
-    # Normalize CLO, PO, and column names
+    # Build pivot table using CLO_index / PO_index
     # ------------------------------------------------------
-    justification_df = justification_df.rename(columns={
-        "Mapping": "Level",
-        "Map Level": "Level",
-        "CO-PO Level": "Level",
-        "Common Keywords": "Keywords",
-        "Keyword": "Keywords",
-        "keyword": "Keywords",
-    })
+    n_clo = len(clo_list)
+    n_po = len(AICTE_POS)
 
-    for col in ["CLO", "PO", "Level", "Similarity", "Keywords"]:
-        if col not in justification_df.columns:
-            justification_df[col] = ""
-
-    def fix_clo(x):
-        num = re.sub(r"[^0-9]", "", str(x))
-        return f"CLO{num}" if num else ""
-    justification_df["CLO"] = justification_df["CLO"].apply(fix_clo)
-
-    def fix_po(x):
-        num = re.sub(r"[^0-9]", "", str(x))
-        return f"PO{num}" if num else ""
-    justification_df["PO"] = justification_df["PO"].apply(fix_po)
-
-    def fmt_kw(x):
-        if isinstance(x, float):
-            return ""
-        if isinstance(x, list):
-            return ", ".join(str(i) for i in x)
-        return str(x)
-    justification_df["Keywords"] = justification_df["Keywords"].apply(fmt_kw)
-
-    # ------------------------------------------------------
-    # Build pivot structure with wrapped text
-    # ------------------------------------------------------
     pivot = {}
 
-    for clo in clo_list:
-        pivot[clo] = {"Level": [], "Similarity": [], "Keywords": []}
+    # Prepare empty output structure
+    for c in range(n_clo):
+        pivot[c] = {"Level": [], "Sim": [], "KW": []}
 
-    for po_index in range(len(AICTE_POS)):
-        po_name = f"PO{po_index+1}"
-
-        for i, clo in enumerate(clo_list):
-            clo_name = f"CLO{i+1}"
-
+    for po_i in range(n_po):
+        for clo_i in range(n_clo):
             row = justification_df[
-                (justification_df["CLO"] == clo_name) &
-                (justification_df["PO"] == po_name)
+                (justification_df["CLO_index"] == clo_i) &
+                (justification_df["PO_index"] == po_i)
             ]
 
             if row.empty:
@@ -254,45 +205,48 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="COâ
                 kw = ""
             else:
                 row = row.iloc[0]
-                level = Paragraph(str(row.get("Level", "")), wrap_style)
-                sim = Paragraph(f"{float(row.get('Similarity', 0)):.2f}", wrap_style)
-                kw = Paragraph(str(row.get("Keywords", "")), wrap_style)
+                level = Paragraph(str(row["Weight"]), wrap)
+                sim = Paragraph(f"{row['Similarity']:.2f}", wrap)
+                kw = Paragraph(str(row["Justification"]), wrap)
 
-            pivot[clo]["Level"].append(level)
-            pivot[clo]["Similarity"].append(sim)
-            pivot[clo]["Keywords"].append(kw)
+            pivot[clo_i]["Level"].append(level)
+            pivot[clo_i]["Sim"].append(sim)
+            pivot[clo_i]["KW"].append(kw)
 
     # ------------------------------------------------------
-    # Build table data
+    # Build header
     # ------------------------------------------------------
     header = ["PO"]
-    for i in range(len(clo_list)):
+    for i in range(n_clo):
         header += [
-            Paragraph(f"CLO{i+1}<br/>Level", wrap_style),
-            Paragraph(f"CLO{i+1}<br/>Sim", wrap_style),
-            Paragraph(f"CLO{i+1}<br/>Keywords", wrap_style)
+            Paragraph(f"CLO{i+1}<br/>Level", wrap),
+            Paragraph(f"CLO{i+1}<br/>Sim", wrap),
+            Paragraph(f"CLO{i+1}<br/>Justification", wrap),
         ]
 
     table_data = [header]
 
-    for po in range(len(AICTE_POS)):
-        row = [Paragraph(f"PO{po+1}", wrap_style)]
-        for clo in clo_list:
-            row.append(pivot[clo]["Level"][po])
-            row.append(pivot[clo]["Similarity"][po])
-            row.append(pivot[clo]["Keywords"][po])
+    # ------------------------------------------------------
+    # Fill rows
+    # ------------------------------------------------------
+    for po_i in range(n_po):
+        row = [Paragraph(f"PO{po_i+1}", wrap)]
+        for clo_i in range(n_clo):
+            row.append(pivot[clo_i]["Level"][po_i])
+            row.append(pivot[clo_i]["Sim"][po_i])
+            row.append(pivot[clo_i]["KW"][po_i])
         table_data.append(row)
 
     # ------------------------------------------------------
-    # Fit-to-page column widths
+    # Fit-to-page widths
     # ------------------------------------------------------
-    col_widths = [25] + [40, 35, 90] * len(clo_list)
+    col_widths = [25] + [35, 35, 120] * n_clo
 
     table = Table(table_data, colWidths=col_widths, repeatRows=1)
-
     table.setStyle(TableStyle([
         ("BACKGROUND", (0,0), (-1,0), colors.lightblue),
         ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTSIZE", (0,0), (-1,-1), 6),
         ("ALIGN", (0,0), (-1,-1), "CENTER"),
         ("VALIGN", (0,0), (-1,-1), "TOP"),
         ("GRID", (0,0), (-1,-1), 0.25, colors.black),
@@ -302,13 +256,11 @@ def df_to_pdf_bytes(matrix_df, clo_list, AICTE_POS, justification_df, title="COâ
     story.append(Spacer(1, 10))
     story.append(table)
 
-    # ------------------------------------------------------
     doc.build(story)
     pdf_bytes = buffer.getvalue()
     buffer.close()
+
     return pdf_bytes
-
-
 
 
 def split_text_to_lines(text, max_chars=100):
@@ -519,6 +471,7 @@ with col2:
 st.markdown("---")
 st.caption("This tool is provided as an academic prototype. For production deployment, consider "
            "model fine-tuning on domain mappings, secure hosting of the model, and additional QA steps.")
+
 
 
 
