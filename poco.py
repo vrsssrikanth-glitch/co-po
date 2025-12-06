@@ -151,6 +151,13 @@ def df_to_excel_bytes(matrix_df, clo_list, AICTE_POS, justification_df):
 
     output.seek(0)
     return output.read()
+# -----------------------------------------
+# DEBUG: Check CLO / PO spelling and format
+# -----------------------------------------
+
+print("CLO values:", justification_df["CLO"].unique())
+print("PO values:", justification_df["PO"].unique())
+print("JUSTIFICATION SAMPLE:\n", justification_df.head(10))
 
 print("COLUMNS:", justification_df.columns.tolist())
 print(justification_df.head(10))
@@ -512,6 +519,7 @@ with col2:
 st.markdown("---")
 st.caption("This tool is provided as an academic prototype. For production deployment, consider "
            "model fine-tuning on domain mappings, secure hosting of the model, and additional QA steps.")
+
 
 
 
